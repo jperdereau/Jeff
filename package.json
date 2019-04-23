@@ -19,8 +19,18 @@
     "fs-extra": "0.8.1",
     "glob": "4.3.1",
     "image-optim": "0.3.0",
-    "js-beautify": "1.4.2",
-    "node-pngquant-native": "0.0.12"
+    "imagemin": "7.0.1",
+    "imagemin-pngquant": "9.0.0",
+    "js-beautify": "1.4.2"
+  },
+  "scripts": {
+    "clean": "rm -rf node_modules/",
+    "coverage": "nyc -a --reporter=lcov --reporter=text npm run mocha && echo \"Open ./coverage/lcov-report/index.html\"",
+    "deps": "npm install",
+    "lint": "eslint .",
+    "mocha": "mocha --timeout 60000 test/**/*.js",
+    "test": "npm run mocha",
+    "version": "echo \"node: \"`node --version` && echo \"npm: \"`npm --version` && echo \"NODE_ENV: ${NODE_ENV}\""
   },
   "repository": {
     "type": "git",
@@ -31,5 +41,9 @@
       "type": "MIT",
       "url": "https://github.com/Wizcorp/jeff/blob/master/LICENSE"
     }
-  ]
+  ],
+  "devDependencies": {
+    "mocha": "^8.1.1",
+    "nyc": "^15.1.0"
+  }
 }

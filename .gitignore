@@ -1,4 +1,7 @@
-test
-test-output
+.idea/
+.nyc_output/
+coverage/
+node_modules/
 npm-debug.log
-node_modules
+package-lock.json
+

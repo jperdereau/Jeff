@@ -6,7 +6,7 @@ var glob     = require('glob');
 var path     = require('path');
 var async    = require('async');
 var beautify = require('js-beautify').js_beautify;
-var pngquant = require('node-pngquant-native');
+var imageminPngquant = require('imagemin-pngquant');
 var imgOptim = require('image-optim');
 var pjson    = require('../package.json');
 
@@ -163,7 +163,6 @@ Jeff.prototype._init = function (options, cb) {
 	} else {
 		var self = this;
 		glob(this._options.source, { cwd: this._options.inputDir }, function (error, uris) {
-			console.error('uris', self._options.source, uris)
 			cb(uris);
 		})
 	}
@@ -329,14 +328,27 @@ Jeff.prototype._processFileGroup = function (nextGroupCb) {
 	);
 };
 
-Jeff.prototype._extractClassGroup = function (imageList, graphicProperties, nextClassListCb) {
+Jeff.prototype._extractClassGroup = function (imageList, graphicProperties, cb) {
 	var imageNames = this._generateImageNames(imageList);
 	var data = this._generateExportData(graphicProperties, imageNames);
 	if (this._options.writeToDisk) {
-		this._writeImagesToDisk(imageList, imageNames);
-		if (!this._options.ignoreData) {
-			this._writeDataToDisk(data);
-		}
+		var that = this;
+		return this._writeImagesToDisk(imageList, imageNames, function (error) {
+			if (error) {
+				return cb(error);
+			}
+			if (!that._options.ignoreData) {
+				that._writeDataToDisk(data);
+			}
+			if (that._options.returnData) {
+				that._extractedData.push({
+					imageNames: imageNames,
+					images: imageList,
+					data: data
+				});
+			}
+			return cb();
+		});
 	}
 
 	if (this._options.returnData) {
@@ -346,8 +358,7 @@ Jeff.prototype._extractClassGroup = function (imageList, graphicProperties, next
 			data: data
 		});
 	}
-
-	nextClassListCb();
+	return cb();
 };
 
 Jeff.prototype._generateImageNames = function (imageList) {
@@ -384,17 +395,65 @@ Jeff.prototype._generateImageName = function (imgName) {
 	return imgPath + '.png';
 };
 
-Jeff.prototype._writeImagesToDisk = function (imageList, imageNames) {
-	for (var i = 0; i < imageNames.length; i += 1) {
-		var imagePath = path.join(this._options.outDir, imageNames[i]);
-		this._canvasToPng(imagePath, imageList[i].img);
+Jeff.prototype._writeImagesToDisk = function (imageList, imageNames, cb) {
+	if (!cb) {
+		throw new Error('Missing cb.')
 	}
+	var indexes = [];
+	for (var i = 0; i < imageNames.length; i += 1) {
+		indexes.push(i);
+	}
+	var that = this;
+	async.forEachSeries(indexes, function (index, callback) {
+		var imagePath = path.join(that._options.outDir, imageNames[index]);
+		that._canvasToPng(imagePath, imageList[index].img, callback);
+	}, cb)
 };
 
-Jeff.prototype._canvasToPng = function (pngName, canvas) {
-	if (canvas.width === 0 || canvas.height === 0) {
-		return;
+/**
+ * @param {Buffer} png
+ * @param {number} imageQuality
+ * @param {Function} cb
+ */
+Jeff.prototype._pngCompress = function (png, imageQuality, cb) {
+	imageminPngquant({
+		quality: [imageQuality / 100, 1]
+	})(png)
+		.then(
+			/**
+			 * @param {Buffer} data
+			 */
+			function (data) {
+				png = data;
+				return cb(null, png);
+			}
+		)
+		.catch(cb);
+};
+
+/**
+ * @param {boolean} shouldOptimizeImage
+ * @param {string} pngName
+ * @param {Buffer} compressedPng
+ * @param {Function} cb
+ */
+function canvasToPngFinalize(shouldOptimizeImage, pngName, compressedPng, cb) {
+	writeFile(pngName, compressedPng);
+
+	if (shouldOptimizeImage) {
+		return imgOptim.optimize(pngName, cb);
 	}
+	return cb();
+}
+
+Jeff.prototype._canvasToPng = function (pngName, canvas, cb) {
+	if (!cb) {
+		throw new Error('Missing cb.')
+	}
+	if (canvas.width === 0 || canvas.height === 0) {
+		return cb();
+	}
+	var that = this;
 
 	var url = canvas.toDataURL();
 	var header = 'data:image/png;base64,';
@@ -402,16 +461,21 @@ Jeff.prototype._canvasToPng = function (pngName, canvas) {
 	var png = new Buffer(url.substr(len), 'base64');
 
 	if (this._options.imageQuality < 100) {
-		png = pngquant.compress(png, { quality: [this._options.imageQuality, 100] });
+		return this._pngCompress(png, this._options.imageQuality, function (error, compressedPng) {
+			if (error) {
+				return cb(error);
+			}
+			if (!that._options.customWriteFile || !that._options.customWriteFile(pngName, compressedPng)) {
+				return canvasToPngFinalize(that._options.imageOptim, pngName, compressedPng, cb)
+			}
+			return cb();
+		})
 	}
 
 	if (!this._options.customWriteFile || !this._options.customWriteFile(pngName, png)) {
-		writeFile(pngName, png);
-
-		if (this._options.imageOptim) {
-			imgOptim.optimize(pngName, function() {})
-		}
+		return canvasToPngFinalize(this._options.imageOptim, pngName, png, cb)
 	}
+	return cb();
 };
 
 // TODO: frame rate should be stored on symbols instead of graphic properties
