@@ -12,7 +12,7 @@ function GetCanvas(width, height) {
 		return Canvas;
 	} else {
 		Canvas = require('canvas');
-		return new Canvas(w, h);
+		return Canvas.createCanvas(w, h);
 	}
 }
 
