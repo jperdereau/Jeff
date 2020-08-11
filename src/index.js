@@ -1,22 +1,22 @@
 /* jshint camelcase: false */ //for js_beautify and indent_size
 'use strict';
 
-var fs       = require('fs-extra');
-var glob     = require('glob');
-var path     = require('path');
-var async    = require('async');
+var fs = require('fs-extra');
+var glob = require('glob');
+var path = require('path');
+var async = require('async');
 var beautify = require('js-beautify').js_beautify;
 var imageminPngquant = require('imagemin-pngquant');
 var imgOptim = require('image-optim');
-var pjson    = require('../package.json');
+var pjson = require('../package.json');
 
-var helper         = require('./Helper/index.js');
-var SwfParser      = require('./Gordon/parser.js');
-var processSwf     = require('./SwfObjectProcessor/index.js');
+var helper = require('./Helper/index.js');
+var SwfParser = require('./Gordon/parser.js');
+var processSwf = require('./SwfObjectProcessor/index.js');
 var CanvasRenderer = require('./CanvasRenderer/index.js');
 
 // For non-ascii characters in SWF class names
-var JSON_WRITE_OPTIONS = { encoding:'binary' };
+var JSON_WRITE_OPTIONS = { encoding: 'binary' };
 
 // Jeff's only API method
 function extractSwf(exportParams, cb) {
@@ -27,90 +27,90 @@ function extractSwf(exportParams, cb) {
 		// ... for extractiong
 		jeff._extractFileGroups(swfUris, cb);
 	});
-};
+}
 module.exports = extractSwf;
 
 function Jeff() {
-	this._parser   = new SwfParser();      // Parser of swf files
+	this._parser = new SwfParser(); // Parser of swf files
 	this._renderer = new CanvasRenderer(); // Renderer for swf images and vectorial shapes
 
 	// Extraction options
 	this._options = null;
 
 	// Information about source files
-	this._fileHeaderInfo         = undefined;
+	this._fileHeaderInfo = undefined;
 
 	// Parameters applying to the file group being processed
-	this._fileGroupName          = undefined; // Name
-	this._fileGroupRatio         = undefined; // Export ratio
+	this._fileGroupName = undefined; // Name
+	this._fileGroupRatio = undefined; // Export ratio
 	this._swfObjectsPerFileGroup = undefined; // Array holding swf objects per file
-	this._swfObjects             = undefined; // Merged swf objects
-	this._symbolList             = undefined; // List of symbols to extract
-	this._symbols                = undefined; // Symbols corresponding to the swfObjects
+	this._swfObjects = undefined; // Merged swf objects
+	this._symbolList = undefined; // List of symbols to extract
+	this._symbols = undefined; // Symbols corresponding to the swfObjects
 
 	// Parameters applying to the class group being processed
-	this._classGroupName         = undefined; // Name
-	this._classGroupList         = undefined; // Classes
-	this._hierarchy              = undefined; // Hierarchy of the symbols
+	this._classGroupName = undefined; // Name
+	this._classGroupList = undefined; // Classes
+	this._hierarchy = undefined; // Hierarchy of the symbols
 }
 
 function JeffOptions(params) {
 	// Primary options
-	this.inputDir            = params.inputDir            || '.';
-	this.outDir              = params.outDir              || null;
-	this.source              = params.source              || '*.swf';
+	this.inputDir = params.inputDir || '.';
+	this.outDir = params.outDir || null;
+	this.source = params.source || '*.swf';
 
 	// Secondary options
-	this.scope               = params.scope               || 'main';
-	this.renderFrames        = params.renderFrames        || false;
-	this.ratio               = params.ratio               || 1;
+	this.scope = params.scope || 'main';
+	this.renderFrames = params.renderFrames || false;
+	this.ratio = params.ratio || 1;
 
 	// Optimisation options
-	this.imageOptim          = params.imageOptim          || false;
-	this.imageQuality        = params.imageQuality        || 100;
-	this.createAtlas         = params.createAtlas         || false;
-	this.powerOf2Images      = params.powerOf2Images      || false;
-	this.maxImageDim         = params.maxImageDim         || 2048;
-	this.simplify            = params.simplify            || false;
-	this.beautify            = params.beautify            || false;
-	this.flatten             = params.flatten             || false;
-	this.compressMatrices    = params.compressMatrices    || false;
+	this.imageOptim = params.imageOptim || false;
+	this.imageQuality = params.imageQuality || 100;
+	this.createAtlas = params.createAtlas || false;
+	this.powerOf2Images = params.powerOf2Images || false;
+	this.maxImageDim = params.maxImageDim || 2048;
+	this.simplify = params.simplify || false;
+	this.beautify = params.beautify || false;
+	this.flatten = params.flatten || false;
+	this.compressMatrices = params.compressMatrices || false;
 
 	// Advanced options
-	this.exportAtRoot        = params.exportAtRoot        || false;
-	this.splitClasses        = params.splitClasses        || false;
-	this.ignoreImages        = params.ignoreImages        || false;
-	this.ignoreData          = params.ignoreData          || false;
-	this.minificationFilter  = params.minificationFilter  || 'linear';
+	this.exportAtRoot = params.exportAtRoot || false;
+	this.splitClasses = params.splitClasses || false;
+	this.ignoreImages = params.ignoreImages || false;
+	this.ignoreData = params.ignoreData || false;
+	this.minificationFilter = params.minificationFilter || 'linear';
 	this.magnificationFilter = params.magnificationFilter || 'linear';
-	this.outlineEmphasis     = params.outlineEmphasis     || 1;
+	this.outlineEmphasis = params.outlineEmphasis || 1;
 
 	// Advanced++ options
 	// Not usable as command line options
-	this.defaultGroupRatio   = params.defaultGroupRatio   || 1;
-	this.classGroups         = params.classGroups         || {};
-	this.fileGroups          = params.fileGroups          || {};
-	this.fileGroupRatios     = params.fileGroupRatios     || {};
-	this.returnData          = params.returnData          || false;
-	this.attributeFilter     = params.attributeFilter;
-	this.attributeFilter     = params.attributeFilter;
-	this.classRatios         = params.classRatios;
-	this.container           = params.container;
-	this.ignoreExpression    = params.ignoreExpression;
-	this.ignoreList          = params.ignoreList;
-	this.removeList          = params.removeList;
-	this.exclusiveList       = params.exclusiveList;
-	this.postProcess         = params.postProcess;
-	this.customWriteFile     = params.customWriteFile;
-	this.customReadFile      = params.customReadFile;
-	this.fixedSize           = params.fixedSize;
-	this.fallbackFrameRate   = params.fallbackFrameRate   || 25;
+	this.defaultGroupRatio = params.defaultGroupRatio || 1;
+	this.classGroups = params.classGroups || {};
+	this.fileGroups = params.fileGroups || {};
+	this.fileGroupRatios = params.fileGroupRatios || {};
+	this.returnData = params.returnData || false;
+	this.attributeFilter = params.attributeFilter;
+	this.attributeFilter = params.attributeFilter;
+	this.classRatios = params.classRatios;
+	this.container = params.container;
+	this.ignoreExpression = params.ignoreExpression;
+	this.ignoreList = params.ignoreList;
+	this.removeList = params.removeList;
+	this.exclusiveList = params.exclusiveList;
+	this.postProcess = params.postProcess;
+	this.customWriteFile = params.customWriteFile;
+	this.customReadFile = params.customReadFile;
+	this.fixedSize = params.fixedSize;
+	this.fallbackFrameRate = params.fallbackFrameRate || 25;
 	// 1: minimal log level, 10: maximum log level. TODO: needs to be implemented on every console.warn/log/error
-	this.verbosity           = params.verbosity           || 3;
+	this.verbosity = params.verbosity || 3;
 
 	// Whether only one frame is being rendered
 	// Boolean used for naming purpose
-	this.onlyOneFrame = (this.renderFrames instanceof Array) && (this.renderFrames.length === 1);
+	this.onlyOneFrame = this.renderFrames instanceof Array && this.renderFrames.length === 1;
 
 	if (this.outDir === null) {
 		// Returning data if output directory not specified
@@ -164,23 +164,24 @@ Jeff.prototype._init = function (options, cb) {
 		var self = this;
 		glob(this._options.source, { cwd: this._options.inputDir }, function (error, uris) {
 			cb(uris);
-		})
+		});
 	}
 };
 
 Jeff.prototype._extractFileGroups = function (swfUris, endExtractionCb) {
-	var nbFiles  = 0;
+	var nbFiles = 0;
 	var nbErrors = 0;
 
 	var filesPerGroup = helper.groupFiles(swfUris, this._options.fileGroups);
 	console.log('Starting conversion of', swfUris.length, 'file(s)');
 
 	var self = this;
-	async.eachSeries(filesPerGroup,
+	async.eachSeries(
+		filesPerGroup,
 		function (fileGroup, next) {
 			// Logging number of processed files
-			if ((nbFiles % Math.floor(swfUris.length / 10)) === 0) {
-				console.log((nbFiles * 100 / swfUris.length).toFixed(0) + '% of', swfUris.length, ' files done...');
+			if (nbFiles % Math.floor(swfUris.length / 10) === 0) {
+				console.log(((nbFiles * 100) / swfUris.length).toFixed(0) + '% of', swfUris.length, ' files done...');
 			}
 			nbFiles += fileGroup.input.length;
 			self._parseFileGroup(fileGroup, next);
@@ -190,11 +191,13 @@ Jeff.prototype._extractFileGroups = function (swfUris, endExtractionCb) {
 				if (endExtractionCb) {
 					return endExtractionCb(error);
 				} else {
-					throw new Error('Error!', error);
+					throw new Error('Error! ' + error);
 				}
 			}
 
-			console.log('Jeff Converted ' + nbFiles + ' swf files out of ' + swfUris.length + '. Failures: ' + nbErrors);
+			console.log(
+				'Jeff Converted ' + nbFiles + ' swf files out of ' + swfUris.length + '. Failures: ' + nbErrors
+			);
 			if (endExtractionCb) {
 				endExtractionCb(null, { files: nbFiles, errors: nbErrors }, self._extractedData);
 			}
@@ -204,10 +207,12 @@ Jeff.prototype._extractFileGroups = function (swfUris, endExtractionCb) {
 
 Jeff.prototype._parseFileGroup = function (fileGroup, nextGroupCb) {
 	this._swfObjectsPerFileGroup = [];
-	this._fileGroupName          = fileGroup.output;
-	this._fileGroupRatio         = this._options.ratio * (this._options.fileGroupRatios[this._fileGroupName] || this._options.defaultGroupRatio);
+	this._fileGroupName = fileGroup.output;
+	this._fileGroupRatio =
+		this._options.ratio * (this._options.fileGroupRatios[this._fileGroupName] || this._options.defaultGroupRatio);
 	var self = this;
-	async.eachSeries(fileGroup.input,
+	async.eachSeries(
+		fileGroup.input,
 		function (swfName, next) {
 			self._parseFile(swfName, next);
 		},
@@ -226,7 +231,9 @@ Jeff.prototype._parseFile = function (swfName, nextSwfCb) {
 	var swfObjects = [];
 	function onFileRead(error, swfData) {
 		if (error) return nextSwfCb(error);
-		self._parser.parse(swfName, swfData,
+		self._parser.parse(
+			swfName,
+			swfData,
 			function (swfObject) {
 				var id = swfObject.id;
 				swfObject._swfName = swfName;
@@ -236,7 +243,6 @@ Jeff.prototype._parseFile = function (swfName, nextSwfCb) {
 				// 	console.log(p);
 				// }
 				if (id === undefined) {
-
 					if (swfObject.type === 'scalingGrid') {
 						swfObjects[swfObject.appliedTo].scalingGrid = swfObject.rect;
 						return;
@@ -291,38 +297,46 @@ Jeff.prototype._parseFile = function (swfName, nextSwfCb) {
 };
 
 Jeff.prototype._processFileGroup = function (nextGroupCb) {
-	var exportMain = (this._options.scope === 'main');
+	var exportMain = this._options.scope === 'main';
 
 	// Merging symbols in swfObjectsPerGroup with respect to their priorities (the lower the index the higher the priority)
 	var swfObjects = helper.groupSwfObjects(this._swfObjectsPerFileGroup);
 	var allClasses = helper.getClasses(swfObjects, exportMain);
-	var symbols    = processSwf(swfObjects, allClasses, this);
+	var symbols = processSwf(swfObjects, allClasses, this);
 
 	// Generating a list of classes to export with respect to options
 	var classList;
 	if (exportMain) {
 		classList = helper.getMains(swfObjects);
 	} else {
-		classList = helper.filterClasses(allClasses, this._options.exclusiveList, this._options.ignoreList, this._options.ignoreExpression);
+		classList = helper.filterClasses(
+			allClasses,
+			this._options.exclusiveList,
+			this._options.ignoreList,
+			this._options.ignoreExpression
+		);
 	}
 
 	// Making separation of the symbols with respect to the classGroups and splitClasses options
 	var classGroups = helper.groupClasses(classList, this._options.classGroups, this._options.splitClasses);
 
 	this._swfObjects = swfObjects;
-	this._symbols    = symbols;
+	this._symbols = symbols;
 
 	var self = this;
-	async.eachSeries(classGroups,
+	async.eachSeries(
+		classGroups,
 		function (classGroup, nextClassListCb) {
 			self._classGroupName = classGroup.name;
 			self._classGroupList = classGroup.list;
-			self._symbolList = helper.generateExportList(self._symbols, self._classGroupList, self._options.attributeFilter);
-			self._renderer.renderSymbols(self,
-				function (imageList, graphicProperties) {
-					self._extractClassGroup(imageList, graphicProperties, nextClassListCb);
-				}
+			self._symbolList = helper.generateExportList(
+				self._symbols,
+				self._classGroupList,
+				self._options.attributeFilter
 			);
+			self._renderer.renderSymbols(self, function (imageList, graphicProperties) {
+				self._extractClassGroup(imageList, graphicProperties, nextClassListCb);
+			});
 		},
 		nextGroupCb
 	);
@@ -397,17 +411,21 @@ Jeff.prototype._generateImageName = function (imgName) {
 
 Jeff.prototype._writeImagesToDisk = function (imageList, imageNames, cb) {
 	if (!cb) {
-		throw new Error('Missing cb.')
+		throw new Error('Missing cb.');
 	}
 	var indexes = [];
 	for (var i = 0; i < imageNames.length; i += 1) {
 		indexes.push(i);
 	}
 	var that = this;
-	async.forEachSeries(indexes, function (index, callback) {
-		var imagePath = path.join(that._options.outDir, imageNames[index]);
-		that._canvasToPng(imagePath, imageList[index].img, callback);
-	}, cb)
+	async.forEachSeries(
+		indexes,
+		function (index, callback) {
+			var imagePath = path.join(that._options.outDir, imageNames[index]);
+			that._canvasToPng(imagePath, imageList[index].img, callback);
+		},
+		cb
+	);
 };
 
 /**
@@ -448,7 +466,7 @@ function canvasToPngFinalize(shouldOptimizeImage, pngName, compressedPng, cb) {
 
 Jeff.prototype._canvasToPng = function (pngName, canvas, cb) {
 	if (!cb) {
-		throw new Error('Missing cb.')
+		throw new Error('Missing cb.');
 	}
 	if (canvas.width === 0 || canvas.height === 0) {
 		return cb();
@@ -466,14 +484,14 @@ Jeff.prototype._canvasToPng = function (pngName, canvas, cb) {
 				return cb(error);
 			}
 			if (!that._options.customWriteFile || !that._options.customWriteFile(pngName, compressedPng)) {
-				return canvasToPngFinalize(that._options.imageOptim, pngName, compressedPng, cb)
+				return canvasToPngFinalize(that._options.imageOptim, pngName, compressedPng, cb);
 			}
 			return cb();
-		})
+		});
 	}
 
 	if (!this._options.customWriteFile || !this._options.customWriteFile(pngName, png)) {
-		return canvasToPngFinalize(this._options.imageOptim, pngName, png, cb)
+		return canvasToPngFinalize(this._options.imageOptim, pngName, png, cb);
 	}
 	return cb();
 };
@@ -502,7 +520,12 @@ Jeff.prototype._generateExportData = function (graphicProperties, imageNames) {
 	// Constructing symbols data that will be included in the export
 	var exportSymbolsData;
 	if (this._options.renderFrames) {
-		exportSymbolsData = helper.generateFrameByFrameData(this._symbols, this._symbolList, graphicProperties, this._options.onlyOneFrame);
+		exportSymbolsData = helper.generateFrameByFrameData(
+			this._symbols,
+			this._symbolList,
+			graphicProperties,
+			this._options.onlyOneFrame
+		);
 	} else {
 		exportSymbolsData = helper.generateMetaData(this._symbols, this._symbolList, graphicProperties);
 	}
@@ -545,14 +568,18 @@ Jeff.prototype._generateExportData = function (graphicProperties, imageNames) {
 		meta: exportProperties
 	};
 
-	if (this._options.flatten)  { exportSymbolsData = helper.flattenAnimations(exportSymbolsData); }
-	if (this._options.simplify) { exportSymbolsData = helper.simplifyAnimation(exportSymbolsData); }
+	if (this._options.flatten) {
+		exportSymbolsData = helper.flattenAnimations(exportSymbolsData);
+	}
+	if (this._options.simplify) {
+		exportSymbolsData = helper.simplifyAnimation(exportSymbolsData);
+	}
 	exportData.symbols = exportSymbolsData;
 
 	if (this._options.compressMatrices) {
 		var delocatedMatrices = helper.delocateMatrices(exportSymbolsData);
 		exportData.transforms = delocatedMatrices.transforms;
-		exportData.colors     = delocatedMatrices.colors;
+		exportData.colors = delocatedMatrices.colors;
 	}
 
 	return exportData;
